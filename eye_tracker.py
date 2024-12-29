@@ -137,17 +137,18 @@ def print_eye_pos(img, left, right):
     if left == right and left != 0:
         text = ''
         if left == 1:
-            print('Looking left')
-            text = 'Looking left'
+            return 'Looking left'
+            # text = 'Looking left'
         elif left == 2:
-            print('Looking right')
-            text = 'Looking right'
+            return 'Looking right'
+            # text = 'Looking right'
         elif left == 3:
-            print('Looking up')
-            text = 'Looking up'
-        font = cv2.FONT_HERSHEY_SIMPLEX 
-        cv2.putText(img, text, (30, 30), font,  
-                   1, (0, 255, 255), 2, cv2.LINE_AA) 
+            return 'Looking up'
+            # text = 'Looking up'
+        # font = cv2.FONT_HERSHEY_SIMPLEX 
+        # cv2.putText(img, text, (30, 30), font,  
+        #            1, (0, 255, 255), 2, cv2.LINE_AA) 
+    return None
 
 face_model = get_face_detector()
 landmark_model = get_landmark_model()
@@ -162,47 +163,106 @@ def nothing(x):
 
 cv2.createTrackbar("threshold", "image", 75, 255, nothing)
 
-def track_eye(video_path=None):
+# def track_eye(video_path=None):
 
-    video_path = ""
+#     video_path = ""
+#     # this is caputring the video and converting it frame by frame instead we only provide the frame to it directly
+#     cap = cv2.VideoCapture(video_path)
+#     ret, img = cap.read()
+#     thresh = img.copy()
 
-    cap = cv2.VideoCapture(video_path)
-    ret, img = cap.read()
-    thresh = img.copy()
+#     while(True):
+#         ret, img = cap.read()
+#         rects = find_faces(img, face_model)
 
-    while(True):
-        ret, img = cap.read()
-        rects = find_faces(img, face_model)
-
-        if not ret:
-            break
+#         if not ret:
+#             break
         
-        for rect in rects:
-            shape = detect_marks(img, landmark_model, rect)
-            mask = np.zeros(img.shape[:2], dtype=np.uint8)
-            mask, end_points_left = eye_on_mask(mask, left, shape)
-            mask, end_points_right = eye_on_mask(mask, right, shape)
-            mask = cv2.dilate(mask, kernel, 5)
+#         for rect in rects:
+#             shape = detect_marks(img, landmark_model, rect)
+#             mask = np.zeros(img.shape[:2], dtype=np.uint8)
+#             mask, end_points_left = eye_on_mask(mask, left, shape)
+#             mask, end_points_right = eye_on_mask(mask, right, shape)
+#             mask = cv2.dilate(mask, kernel, 5)
             
-            eyes = cv2.bitwise_and(img, img, mask=mask)
-            mask = (eyes == [0, 0, 0]).all(axis=2)
-            eyes[mask] = [255, 255, 255]
-            mid = int((shape[42][0] + shape[39][0]) // 2)
-            eyes_gray = cv2.cvtColor(eyes, cv2.COLOR_BGR2GRAY)
-            threshold = cv2.getTrackbarPos('threshold', 'image')
-            _, thresh = cv2.threshold(eyes_gray, threshold, 255, cv2.THRESH_BINARY)
-            thresh = process_thresh(thresh)
+#             eyes = cv2.bitwise_and(img, img, mask=mask)
+#             mask = (eyes == [0, 0, 0]).all(axis=2)
+#             eyes[mask] = [255, 255, 255]
+#             mid = int((shape[42][0] + shape[39][0]) // 2)
+#             eyes_gray = cv2.cvtColor(eyes, cv2.COLOR_BGR2GRAY)
+#             threshold = cv2.getTrackbarPos('threshold', 'image')
+#             _, thresh = cv2.threshold(eyes_gray, threshold, 255, cv2.THRESH_BINARY)
+#             thresh = process_thresh(thresh)
             
-            eyeball_pos_left = contouring(thresh[:, 0:mid], mid, img, end_points_left)
-            eyeball_pos_right = contouring(thresh[:, mid:], mid, img, end_points_right, True)
-            print_eye_pos(img, eyeball_pos_left, eyeball_pos_right)
-            # for (x, y) in shape[36:48]:
-            #     cv2.circle(img, (x, y), 2, (255, 0, 0), -1)
+#             eyeball_pos_left = contouring(thresh[:, 0:mid], mid, img, end_points_left)
+#             eyeball_pos_right = contouring(thresh[:, mid:], mid, img, end_points_right, True)
+#             print_eye_pos(img, eyeball_pos_left, eyeball_pos_right)
+#             # for (x, y) in shape[36:48]:
+#             #     cv2.circle(img, (x, y), 2, (255, 0, 0), -1)
             
-        cv2.imshow('eyes', img)
-        cv2.imshow("image", thresh)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+#         cv2.imshow('eyes', img)
+#         cv2.imshow("image", thresh)
+#         if cv2.waitKey(1) & 0xFF == ord('q'):
+#             break
         
-    cap.release()
-    cv2.destroyAllWindows()
+#     cap.release()
+#     cv2.destroyAllWindows()
+
+def track_eye(frame):
+    """
+    Processes a single frame to detect eye positions and prints their relative positions.
+    
+    Args:
+        frame (numpy.ndarray): A single image frame to process.
+    """
+    if frame is None:
+        raise ValueError("Invalid frame provided")
+    # Copy the input frame for thresholding operations
+    thresh = frame.copy()
+
+    # Detect faces in the frame
+    rects = find_faces(frame, face_model)
+
+    for rect in rects:
+        # Detect facial landmarks
+        shape = detect_marks(frame, landmark_model, rect)
+
+        # Create a mask for the eyes
+        mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+        mask, end_points_left = eye_on_mask(mask, left, shape)
+        mask, end_points_right = eye_on_mask(mask, right, shape)
+        mask = cv2.dilate(mask, kernel, 5)
+
+        # Isolate the eyes region
+        eyes = cv2.bitwise_and(frame, frame, mask=mask)
+        mask = (eyes == [0, 0, 0]).all(axis=2)
+        eyes[mask] = [255, 255, 255]
+
+        # Find the midpoint between the eyes
+        mid = int((shape[42][0] + shape[39][0]) // 2)
+
+        # Convert the eyes region to grayscale
+        eyes_gray = cv2.cvtColor(eyes, cv2.COLOR_BGR2GRAY)
+
+        # Apply thresholding
+        threshold = cv2.getTrackbarPos('threshold', 'image')
+        _, thresh = cv2.threshold(eyes_gray, threshold, 255, cv2.THRESH_BINARY)
+        thresh = process_thresh(thresh)
+
+        # Analyze left and right eyes
+        eyeball_pos_left = contouring(thresh[:, 0:mid], mid, frame, end_points_left)
+        eyeball_pos_right = contouring(thresh[:, mid:], mid, frame, end_points_right, True)
+
+        # Print the detected eye positions
+        return print_eye_pos(frame, eyeball_pos_left, eyeball_pos_right)
+
+        # Optional: Visualize landmarks
+        # for (x, y) in shape[36:48]:
+        #     cv2.circle(frame, (x, y), 2, (255, 0, 0), -1)
+
+    # Show the processed frame and thresholded eyes
+    # cv2.imshow('eyes', frame)
+    # cv2.imshow("image", thresh)
+
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     cv2.destroyAllWindows()
