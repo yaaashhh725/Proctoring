@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    
+    <style>
+        #video {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+        }
+        #alerts {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: red;
+        }
+    </style>
+</head>
+<!-- 
+<body>
+    <h1>Online quiz</h1>
+    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScAuBG8OsdKRKlvB_R8GrmomQVBNsz-0IQf-DpeCj_GtEdDfA/viewform?embedded=true" width="700" height="520" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+    <video id="video" autoplay></video>
+    <div id="alerts"></div> -->
+
+    <!-- <script>
+        const video = document.getElementById('video');
+        const alertsDiv = document.getElementById('alerts');
+
+        // Access webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+            })
+            .catch((err) => {
+                console.error("Error accessing webcam:", err);
+            });
+
+        // Function to send frames to the backend
+        async function sendFrameToBackend() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const frameBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+
+            const formData = new FormData();
+            formData.append("frame", frameBlob, "frame.jpg");
+
+            try {
+                const response = await fetch('/process_frame', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await response.json();
+
+                // Update alerts based on response
+                const messages = Object.values(data).filter(msg => msg !== null);
+                alertsDiv.innerHTML = messages.length > 0
+                    ? messages.join('<br>')
+                    : "No alerts detected.";
+            } catch (error) {
+                console.error("Error sending frame to backend:", error);
+            }
+        }
+
+        // Send frames at regular intervals
+        setInterval(sendFrameToBackend, 50); // Adjust the interval as needed (500 ms = 2 fps)
+    </script> -->
+    
+<!-- </body> -->
+<body>
+    <h1>Online quiz</h1>
+    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScAuBG8OsdKRKlvB_R8GrmomQVBNsz-0IQf-DpeCj_GtEdDfA/viewform?embedded=true" width="700" height="520" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+    <video id="video" autoplay></video>
+    <div id="alerts"></div>
+
+    <!-- Add this at the end of the body -->
+    <script>
+        // Function to display alert
+        function displayAlert(message) {
+            alert(message); // Display the message as an alert
+        }
+
+        // Function to process a single frame
+        function processFrame(frame) {
+            // Prepare the frame for submission as FormData
+            const formData = new FormData();
+            formData.append("frame", frame, "frame.jpg"); // Add a dummy filename for compatibility
+
+            // Send the frame to the Flask backend
+            fetch("/process_frame", {
+                method: "POST",
+                body: formData,
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to process frame");
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Display alert if result is present
+                if (data.result) {
+                    displayAlert(data.result);
+                }
+            })
+            .catch(error => {
+                console.error("Error processing frame:", error);
+            });
+        }
+
+        // Simulate frame capture in real-time (replace this with actual frame fetching)
+        setInterval(() => {
+            // Example: Replace this with a real frame blob from a webcam or video feed
+            const mockFrame = new Blob(["mock frame data"], { type: "image/jpeg" });
+            processFrame(mockFrame);
+        }, 1000); // Process a frame every 1 second
+    </script>
+</body>
+
+</html>
